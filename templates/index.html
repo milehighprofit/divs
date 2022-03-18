@@ -1,4 +1,7 @@
 <html>
+<div class = 'index'>
+    
+</div>
 <head>
     <style>
         body {font-family: arial; margin: 20px; }
@@ -7,26 +10,6 @@
 </head>    
 <body>
     
-
-variable = {{ variable }}
-
-
-<form action="{{ url_for('ind') }}" method="post">
-    <input type="button" value="14400" name="timeframe">
-    <input type="button" value="3600" name="timeframe">
-    <input type="submit" value="set timeframe">
-</form>
-
-
-{% with messages = get_flashed_messages() %}
-{% if messages %}
-<ul>
-    {% for message in messages %}
-    <li style="color:red">{{ message }}</li>
-    {% endfor %}
-</ul>
-{% endif %}
-{% endwith %}
 
 {% for table in tables %}
            
