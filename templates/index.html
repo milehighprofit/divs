@@ -6,17 +6,30 @@
 
 </head>    
 <body>
-    <h1>Technical screener</h1>
+    
 
-        <form>
-            <select name="RSI">
-                <option value="1h"> 1h</option>
-                <option value="2h"> 2h</option>
-                <option value="4h">4h</option>
-            </select>
-            <input type="submit" value="scan">
-        </form>
-        
-        
-</body>    
-</html>
+variable = {{ variable }}
+
+
+<form action="{{ url_for('ind') }}" method="post">
+    <input type="button" value="14400" name="timeframe">
+    <input type="button" value="3600" name="timeframe">
+    <input type="submit" value="set timeframe">
+</form>
+
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<ul>
+    {% for message in messages %}
+    <li style="color:red">{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+{% endwith %}
+
+{% for table in tables %}
+           
+            {{ table|safe }}
+{% endfor %}
+

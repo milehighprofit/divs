@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request
+from crypt import methods
+from flask import Flask, render_template, request, redirect, url_for, flash
 import datetime as dt
 import requests
 import pandas as pd
@@ -6,11 +7,10 @@ import numpy as np
 import matplotlib
 import mplfinance as mpf
 import talib
-
 app = Flask(__name__)
-if __name__ == "__main__":
-    app.debug = True
+app.secret_key = b'_1#y2l"F4Q8z\n\xec]/'
 
+@app.route('/snapshot')
 def now(lookback): 
     #get time now convert it to unix
     timenow = dt.datetime.utcnow()
@@ -20,7 +20,7 @@ def now(lookback):
     start_time = start_time.replace(tzinfo=dt.timezone.utc).timestamp() 
     return start_time, end_time
 
-
+@app.route('/snapshot')
 def getmarkets(PERP):
     markets = requests.get(f"https://ftx.com/api/markets").json()
     markets = pd.DataFrame(markets['result'])
@@ -29,24 +29,27 @@ def getmarkets(PERP):
     return markets
 
 perpnames = getmarkets('PERP')
-
+@app.route('/snapshot')
 def ohlc(perpnames, tf, daysback):
     _start_time, _end_time = now(daysback) 
     data = requests.get(f"https://ftx.com/api//markets/{perpnames}/candles?resolution={tf}&start_time={_start_time}&end_time={_end_time}").json()
     data = pd.DataFrame(data['result'])
     return data
 
-dfs = []
-tf = 3600
-daysback = 2
-for perp in perpnames: 
-    dfs.append(ohlc(perp, tf, daysback))
+timeframe = 3600
+def get_tf():
+    dfs = []
+    tf = timeframe
+    daysback = 2
+    for perp in perpnames: 
+        dfs.append(ohlc(perp, tf, daysback))
+    return dfs, render_template("index.html" timeframe=timeframe)
 
-
+dfs = get_tf()
 nameless = pd.concat(dfs, axis=1)
 closes = nameless.loc[:,nameless.columns.get_level_values(0).isin(['close'])]
 
-
+@app.route('/snapshot')
 def divs(closes, columns, ob=70, os=30, period=14):
     """Calculates bullish and bearish RSI divergences under oversold or overbought conditions"""
 
@@ -64,41 +67,23 @@ def divs(closes, columns, ob=70, os=30, period=14):
     closes['new_closing_high'] = np.where(closes['rolling_closing_high'] > closes['rolling_closing_high'].shift(), 1, 0)
     closes['new_closing_low'] = np.where(closes['rolling_closing_low'] < closes['rolling_closing_low'].shift(), 1, 0)
 
-    bearishrsidiv = np.where((closes['new_closing_high'] == 1) & (closes['new_RSI_high'] == 0) & (closes['RSI'] > ob), 1, 0)
-    bullishrsidiv = np.where((closes['new_closing_low'] == 1) & (closes['new_RSI_low'] == 0) & (closes['RSI'] < os), 1, 0)
-   # closes.insert(1, 'bearish_rsi_div', bearishrsidiv)
-   # closes.insert(2, 'bullish_rsi_div', bullishrsidiv)
     closes['bearish_rsi_div'] = np.where((closes['new_closing_high'] == 1) & (closes['new_RSI_high'] == 0) & (closes['RSI'] > ob), 1, 0)
     closes['bullish_rsi_div'] = np.where((closes['new_closing_low'] == 1) & (closes['new_RSI_low'] == 0) & (closes['RSI'] < os), 1, 0)
     closes = closes.dropna()
-    return closes[['RSI', 'bullish_rsi_div', 'bearish_rsi_div']]
+    return closes[['bullish_rsi_div', 'bearish_rsi_div']]
 
+
+rsidata = [] 
+for column in range(179):
+   rsidata.append(divs(closes, column))
+alle = pd.concat(dict(zip(perpnames,rsidata)), axis=1)
 
 
 @app.route("/")
 def index():
-    rsi = request.args.get('rsi', None)
-    if rsi:
-        rsidata = []
-        for column in range(179):
-            rsidata.append(divs(closes, column))
-            all = pd.concat(dict(zip(perpnames,rsidata)), axis=1)
-
-            try:
-                result = all
-                last = result.tail(1).values[0]
-                if last != 0:
-                    print("{}  div detected {}".format(column, 'bullish'))
-            except:
-                pass
-            
-    return render_template("index.html", rsi=rsi)
-
-@app.route("/snapshot")
-def snapshot():
-    return {
-        'code': 'success'
-    }
+    cols = (alle.iloc[-3:] != 0).any()
+    websitedata = alle.iloc[-3:][cols[cols].index]
+    return render_template("index.html", tables = [websitedata.to_html(classes='data')])
 
 
 
