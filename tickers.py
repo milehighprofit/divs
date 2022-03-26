@@ -32,7 +32,7 @@ def ohlc(perpnames, tf, daysback):
     return data
 
 dfs = []
-tf = 14400
+tf = 3600
 daysback = 50
 for perp in perpnames: 
     dfs.append(ohlc(perp, tf, daysback))
@@ -42,7 +42,7 @@ nameless = pd.concat(dfs, axis=1)
 closes = nameless.loc[:,nameless.columns.get_level_values(0).isin(['close'])]
 
 
-def divs(closes, columns, ob=70, os=30, period=14):
+def divs(closes, columns, ob=50, os=50, period=14):
     """Calculates bullish and bearish RSI divergences under oversold or overbought conditions"""
 
     closes['RSI'] = talib.RSI(closes.iloc[:, columns])
