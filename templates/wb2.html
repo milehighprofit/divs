@@ -1,0 +1,12 @@
+<div id="wb2" class="wb2">
+    {% block content %}
+
+  {% for w in wb2 %}
+
+            {{ w|safe }}
+{% endfor %}
+  <table>
+    <tr><th></th><th>1 min</th><th>5 min</th><th>15 min</th></tr>
+    <tr><th>Load averages:</th><td>{{ v }}</td></tr>
+  </table>
+{% endblock %}
