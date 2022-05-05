@@ -73,4 +73,3 @@ alle = pd.concat(dict(zip(perpnames,rsidata)), axis=1)
 
 cols = (alle.iloc[-3:] != 0).any()
 websitedata = alle.iloc[-3:][cols[cols].index]
-
