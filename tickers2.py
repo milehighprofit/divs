@@ -2,7 +2,9 @@ import datetime as dt
 import requests
 import pandas as pd
 import numpy as np
-import random
+import sqlite3 as sq
+from sqlalchemy import create_engine
+from flask_sqlalchemy import SQLAlchemy
 
 def get_rsi(close, lookback):
     ret = close.diff()
@@ -87,11 +89,12 @@ closes = nameless.loc[:,nameless.columns.get_level_values(0).isin(['close'])]
 rsidata = [] 
 for column in range(179):
    rsidata.append(divs(closes, column))
-
 ltf = pd.concat(dict(zip(perpnames,rsidata)), axis=1)
-    
 
 cols = (ltf.iloc[-3:] != 0).any()
 websitedata = ltf.iloc[-3:][cols[cols].index]
-sample = random.random()
-print(websitedata)
+
+engine2 = create_engine('sqlite:///ohlc2.db')
+
+websitedata.to_sql(name='websitedata', con=engine2, if_exists = 'replace')
+print(pd.read_sql_table(table_name='websitedata', con=engine2))

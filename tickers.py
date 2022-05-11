@@ -2,10 +2,33 @@ import datetime as dt
 import requests
 import pandas as pd
 import numpy as np
-import matplotlib
-import mplfinance as mpf
-import talib
-import sqlite3
+import sqlite3 as sq
+from sqlalchemy import create_engine
+from flask_sqlalchemy import SQLAlchemy
+
+table_name = "test" # table and file name
+
+
+def get_rsi(close, lookback):
+    ret = close.diff()
+    up = []
+    down = []
+    for i in range(len(ret)):
+        if ret[i] < 0:
+            up.append(0)
+            down.append(ret[i])
+        else:
+            up.append(ret[i])
+            down.append(0)
+    up_series = pd.Series(up)
+    down_series = pd.Series(down).abs()
+    up_ewm = up_series.ewm(com = lookback - 1, adjust = False).mean()
+    down_ewm = down_series.ewm(com = lookback - 1, adjust = False).mean()
+    rs = up_ewm/down_ewm
+    rsi = 100 - (100 / (1 + rs))
+    rsi_df = pd.DataFrame(rsi).rename(columns = {0:'rsi'}).set_index(close.index)
+    rsi_df = rsi_df.dropna()
+    return rsi_df[3:]
 
 def now(lookback): 
     #get time now convert it to unix
@@ -34,7 +57,7 @@ def ohlc(perpnames, tf, daysback):
 
 dfs = []
 tf = 3600
-daysback = 50
+daysback = 1
 for perp in perpnames: 
     dfs.append(ohlc(perp, tf, daysback))
 
@@ -46,7 +69,7 @@ closes = nameless.loc[:,nameless.columns.get_level_values(0).isin(['close'])]
 def divs(closes, columns, ob=50, os=50, period=14):
     """Calculates bullish and bearish RSI divergences under oversold or overbought conditions"""
 
-    closes['RSI'] = talib.RSI(closes.iloc[:, columns])
+    closes['RSI'] = get_rsi(closes.iloc[:, columns], 14)
     closes['rolling_rsi_high'] = closes['RSI'].rolling(period).max()
     closes['rolling_rsi_low'] = closes['RSI'].rolling(period).min()
     closes['rolling_closing_high'] = closes.iloc[:, columns].rolling(period).max()
@@ -74,3 +97,8 @@ alle = pd.concat(dict(zip(perpnames,rsidata)), axis=1)
 cols = (alle.iloc[-3:] != 0).any()
 websitedata = alle.iloc[-3:][cols[cols].index]
 
+
+engine = create_engine('sqlite:///ohlc.db')
+
+websitedata.to_sql(name='websitedata', con=engine, if_exists = 'replace')
+print(pd.read_sql_table(table_name='websitedata', con=engine))
